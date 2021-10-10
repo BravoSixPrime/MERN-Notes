@@ -10,3 +10,5 @@ create module folder, package.json, etc.
 ` npm init -y `
 
 ` npm install -g nodemon`
+
+
