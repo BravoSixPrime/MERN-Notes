@@ -77,6 +77,18 @@ MongoClient.connect(
     })
 )
 ```
+## Create APIs
+Create restaurants.routes.js
+```js
+import express from "express"
+
+const router = express.Router();
+
+router.route("/",get((req,res)=>res.send("Hi Mom !"))) // Demo route for "/"
+
+export default router
+```
+
 
 
 
