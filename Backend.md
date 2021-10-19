@@ -167,7 +167,10 @@ import RestaurantsDAO from "./api/dao/restaurantsDAO.js"
 ## Create Query Controller
 create restaruants.controller.js in api dir
 
-
+* Analyse the request and it's query parameters
+* Set filters accordingly
+* Call the DAO and get data
+* Set the response  
 
 
 
