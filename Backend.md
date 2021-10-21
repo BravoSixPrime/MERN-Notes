@@ -232,10 +232,10 @@ await RestaurantsDAO.injectDB(client);
     
 ### Create reviewsDAO.js
 Create Class ReviewsDAO with following methods:
-    * injectDB(conn)
-    * addReview
-    * updateReview
-    * deleteReview
+* injectDB(conn)
+* addReview
+* updateReview
+* deleteReview
 ```js
 
 
