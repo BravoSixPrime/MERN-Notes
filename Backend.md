@@ -220,5 +220,23 @@ await RestaurantsDAO.injectDB(client);
         console.log(`listening on port ${port}`);
     }
 ```
+## Creating Reviews Feature
+* Add new route to restaurants.routes.js after get restaurants route
+* Add all types of requests
+* Create reviewsDAO.js
+*  Create reviews.controller.js
+*  inside it create ReviewsCtrl Class with methds like :
+    * apiPostReview
+    * apiUpdateReview
+    * apiDeleteReview
+    
+### Create reviewsDAO.js
+Create Class ReviewsDAO with following methods:
+    * injectDB(conn)
+    * addReview
+    * updateReview
+    * deleteReview
+```js
+
 
 
