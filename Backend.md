@@ -223,12 +223,104 @@ await RestaurantsDAO.injectDB(client);
 ## Creating Reviews Feature
 * Add new route to restaurants.routes.js after get restaurants route
 * Add all types of requests
-* Create reviewsDAO.js
-*  Create reviews.controller.js
+
+### New restaurants.routes.js
+```js
+import express from "express"
+import RestaurantsCtrl from "./restaurants.controller.js"
+import ReviewsCtrl from "./reviews.controller.js"
+
+const router = express.Router();
+
+router.route("/").get(RestaurantsCtrl.apiGetRestaurants); //Get Response as Restataurants
+
+router
+    .route("/review")
+    .post(ReviewsCtrl.apiPostReview)
+    .put(ReviewsCtrl.apiUpdateReview)
+    .delete(ReviewsCtrl.apiDeleteReview)
+
+export default router
+```
+
+###  Create reviews.controller.js
 *  inside it create ReviewsCtrl Class with methds like :
     * apiPostReview
     * apiUpdateReview
     * apiDeleteReview
+```js
+import ReviewsDAO from "./dao/reviewsDAO.js"
+
+export default class ReviewsController {
+    static async apiPostReview(req, res, next) {
+        try {
+            const restaurantId = req.body.restaurant_id
+            const review = req.body.text
+            const userInfo = {
+                name: req.body.name,
+                _id: req.body.user_id
+            }
+            const date = new Date()
+
+            const ReviewResponse = await ReviewsDAO.addReview(
+                restaurantId,
+                userInfo,
+                review,
+                date,
+            )
+            res.json({ status: "success" })
+        } catch (e) {
+            res.status(500).json({ error: e.message })
+        }
+    }
+
+    static async apiUpdateReview(req, res, next) {
+        try {
+            const reviewId = req.body.review_id
+            const text = req.body.text
+            const date = new Date()
+
+            const reviewResponse = await ReviewsDAO.updateReview(
+                reviewId,
+                req.body.user_id,
+                text,
+                date,
+            )
+
+            var { error } = reviewResponse
+            if (error) {
+                res.status(400).json({ error })
+            }
+
+            if (reviewResponse.modifiedCount === 0) {
+                throw new Error(
+                    "unable to update review - user may not be original poster",
+                )
+            }
+
+            res.json({ status: "success" })
+        } catch (e) {
+            res.status(500).json({ error: e.message })
+        }
+    }
+
+    static async apiDeleteReview(req, res, next) {
+        try {
+            const reviewId = req.query.id
+            const userId = req.body.user_id
+            console.log(reviewId)
+            const reviewResponse = await ReviewsDAO.deleteReview(
+                reviewId,
+                userId,
+            )
+            res.json({ status: "success" })
+        } catch (e) {
+            res.status(500).json({ error: e.message })
+        }
+    }
+
+}
+```
     
 ### Create reviewsDAO.js
 Create Class ReviewsDAO with following methods:
@@ -237,6 +329,216 @@ Create Class ReviewsDAO with following methods:
 * updateReview
 * deleteReview
 ```js
+import mongodb from "mongodb"
+const ObjectId = mongodb.ObjectId
+
+let reviews
+
+export default class ReviewsDAO {
+    static async inject(conn) {
+        if (reviews) {
+            return
+        }
+
+        try {
+            reviews = await conn.db(process.env.RESTREVIEWS_NS).collection("reviews")
+        } catch (e) {
+            console.error(`Unable to find collection handles in user DAO :${e}`)
+        }
+    }
+
+    static async addReview(restaurantID, user, review, date) {
+        try {
+            const reviewDoc = {
+                user_id: user._id,
+                date: date,
+                text: review,
+                restaurant_id: ObjectId(restaurantID)
+            }
+            return await reviews.insertOne(reviewDoc)
+        } catch (e) {
+            console.error(`Unable to post review${e}`)
+            return { error: e }
+        }
+    }
+
+    static async updateReview(reviewId, userId, text, date) {
+        try {
+            const updateResponse = await reviews.updateOne({ user_id: userId, _id: ObjectId(reviewId) }, { $set: { text: text, date: date } })
+            return updateResponse;
+        } catch (e) {
+            console.error(`Unable to update the review:${e}`)
+            return { error: e }
+        }
+    }
+
+    static async deleteReview(reviewId, userId) {
+        try {
+            const deletResponse = await reviews.deleteOne({
+                _id: ObjectId(reviewId),
+                user_id: userId
+            })
+        } catch (e) {
+            console.error(`Unable to delete review : ${e}`)
+            return { error: e }
+        }
+    }
+}
+```
+Now
+## Add Feature of Getting Cuidines and Specific Restaurans
+### Add to restaurant.routes.js :
+```js
+router.route("/id/:id").get(RestaurantsCtrl.apiGetRestaurantsById);
+router.route("cuisines").get(RestaurantsCtrl.apiGetRestaurantsByCuisines)
+```
+### Adding These New Methods to RestaurantsCtrl
+Go to restaurants.controller.js and inside RestaurantsCtrl Class Add :
+```
+static async apiGetRestaurantById(req, res, next) {
+    try {
+      let id = req.params.id || {}
+      let restaurant = await RestaurantsDAO.getRestaurantByID(id)
+      if (!restaurant) {
+        res.status(404).json({ error: "Not found" })
+        return
+      }
+      res.json(restaurant)
+    } catch (e) {
+      console.log(`api, ${e}`)
+      res.status(500).json({ error: e })
+    }
+  }
+
+  static async apiGetRestaurantCuisines(req, res, next) {
+    try {
+      let cuisines = await RestaurantsDAO.getCuisines()
+      res.json(cuisines)
+    } catch (e) {
+      console.log(`api, ${e}`)
+      res.status(500).json({ error: e })
+    }
+  }
+```
+### Implement these methods in restaurantsDAO.js 
+New restaurantsDAO.js will be : 
+```js
+import mongodb from "mongodb"
+const ObjectId = mongodb.ObjectId
+let restaurants
+
+export default class RestaurantsDAO {
+  static async injectDB(conn) {
+    if (restaurants) {
+      return
+    }
+    try {
+      restaurants = await conn.db(process.env.RESTREVIEWS_NS).collection("restaurants")
+    } catch (e) {
+      console.error(
+        `Unable to establish a collection handle in restaurantsDAO: ${e}`,
+      )
+    }
+  }
+
+  static async getRestaurants({
+    filters = null,
+    page = 0,
+    restaurantsPerPage = 20,
+  } = {}) {
+    let query
+    if (filters) {
+      if ("name" in filters) {
+        query = { $text: { $search: filters["name"] } }
+      } else if ("cuisine" in filters) {
+        query = { "cuisine": { $eq: filters["cuisine"] } }
+      } else if ("zipcode" in filters) {
+        query = { "address.zipcode": { $eq: filters["zipcode"] } }
+      }
+    }
+
+    let cursor
+    
+    try {
+      cursor = await restaurants
+        .find(query)
+    } catch (e) {
+      console.error(`Unable to issue find command, ${e}`)
+      return { restaurantsList: [], totalNumRestaurants: 0 }
+    }
+
+    const displayCursor = cursor.limit(restaurantsPerPage).skip(restaurantsPerPage * page)
+
+    try {
+      const restaurantsList = await displayCursor.toArray()
+      const totalNumRestaurants = await restaurants.countDocuments(query)
+
+      return { restaurantsList, totalNumRestaurants }
+    } catch (e) {
+      console.error(
+        `Unable to convert cursor to array or problem counting documents, ${e}`,
+      )
+      return { restaurantsList: [], totalNumRestaurants: 0 }
+    }
+  }
+  static async getRestaurantByID(id) {
+    try {
+      const pipeline = [
+        {
+            $match: {
+                _id: new ObjectId(id),
+            },
+        },
+              {
+                  $lookup: {
+                      from: "reviews",
+                      let: {
+                          id: "$_id",
+                      },
+                      pipeline: [
+                          {
+                              $match: {
+                                  $expr: {
+                                      $eq: ["$restaurant_id", "$$id"],
+                                  },
+                              },
+                          },
+                          {
+                              $sort: {
+                                  date: -1,
+                              },
+                          },
+                      ],
+                      as: "reviews",
+                  },
+              },
+              {
+                  $addFields: {
+                      reviews: "$reviews",
+                  },
+              },
+          ]
+      return await restaurants.aggregate(pipeline).next()
+    } catch (e) {
+      console.error(`Something went wrong in getRestaurantByID: ${e}`)
+      throw e
+    }
+  }
+
+  static async getCuisines() {
+    let cuisines = []
+    try {
+      cuisines = await restaurants.distinct("cuisine")
+      return cuisines
+    } catch (e) {
+      console.error(`Unable to get cuisines, ${e}`)
+      return cuisines
+    }
+  }
+}
+```
+That's it !
+
 
 
 
