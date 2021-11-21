@@ -41,3 +41,5 @@ function Component() {
 
 export default Component;
 ```
+# Front Page
+
