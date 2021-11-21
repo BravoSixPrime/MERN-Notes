@@ -20,3 +20,24 @@ Inside src folder there is App.js which controls the frontpage of the app
 cd src
 ```
 create folder called components
+
+<b> Initialize Components</b>
+* login.js
+* add-review.js
+* restaurants.js
+* restaurants-list.js
+
+<b> General Code for each component </b>
+```js
+import React from "react";
+
+function Component() {
+  return (
+    <div>
+      
+    </div>
+  );
+}
+
+export default Component;
+```
